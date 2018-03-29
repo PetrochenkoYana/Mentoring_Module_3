@@ -1,0 +1,9 @@
+D:\D1-D2\03. LINQ\Task\Task\Task\bin\Debug\Task.exe.config
+D:\D1-D2\03. LINQ\Task\Task\Task\bin\Debug\Task.exe
+D:\D1-D2\03. LINQ\Task\Task\Task\bin\Debug\Task.pdb
+D:\D1-D2\03. LINQ\Task\Task\Task\obj\Debug\Task.csprojResolveAssemblyReference.cache
+D:\D1-D2\03. LINQ\Task\Task\Task\obj\Debug\Task.Properties.Resources.resources
+D:\D1-D2\03. LINQ\Task\Task\Task\obj\Debug\SampleSupport.SampleForm.resources
+D:\D1-D2\03. LINQ\Task\Task\Task\obj\Debug\Task.csproj.GenerateResource.Cache
+D:\D1-D2\03. LINQ\Task\Task\Task\obj\Debug\Task.exe
+D:\D1-D2\03. LINQ\Task\Task\Task\obj\Debug\Task.pdb
