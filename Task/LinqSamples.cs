@@ -138,5 +138,89 @@ namespace SampleQueries
             }
 
         }
+
+        [Category("Linq Operators")]
+        [Title("Task 6")]
+        [Description("Укажите всех клиентов, у которых указан нецифровой почтовый код или не заполнен регион " +
+                     "или в телефоне не указан код оператора(для простоты считаем, что это равнозначно - нет круглых скобочек в начале")]
+
+        public void Linq6()
+        {
+            var customerWithDates = dataSource.Customers
+                .Where((c, e) =>
+                int.TryParse(c.PostalCode, out e) == false
+                || string.IsNullOrEmpty(c.Region)
+                || !c.Phone.StartsWith("("));
+
+            foreach (var c in customerWithDates)
+            {
+                ObjectDumper.Write("Customer: " + c.CustomerID + " *** " + c.PostalCode + " *** " + c.Region + " *** " + c.Phone);
+            }
+
+        }
+
+        [Category("Linq Operators")]
+        [Title("Task 7")]
+        [Description("Сгруппируйте все продукты по категориям, внутри – по наличию на складе, внутри последней группы отсортируйте по стоимости")]
+
+        public void Linq7()
+        {
+            var products = dataSource.Products.GroupBy(x => x.Category, (key, g1) =>
+                                g1.GroupBy(x => x.UnitsInStock, (key2, g2) =>
+                                  g2.GroupBy(x => x.UnitPrice)));
+            foreach (var category in products)
+            {
+                foreach (var stock in category)
+                { 
+                    foreach (var price in stock)
+                    {
+                        foreach (var x in price)
+                        {
+                            
+                            ObjectDumper.Write("Category : " + x.Category);
+                            ObjectDumper.Write("Stock : " + x.UnitsInStock);
+                            ObjectDumper.Write("Price : " + x.UnitPrice);
+                        }
+                    }
+                }
+            }
+
+        }
+
+        [Category("Linq Operators")]
+        [Title("Task 8")]
+        [Description("Сгруппируйте товары по группам «дешевые», «средняя цена», «дорогие». Границы каждой группы задайте сами")]
+
+        public void Linq8()
+        {
+            //не понятен смысл задания
+            var chipProducts = dataSource.Products.Where(p=>p.UnitPrice<1000);
+            var middlePriceProducts = dataSource.Products.Where(p => p.UnitPrice > 1000 && p.UnitPrice < 2000);
+            var expensiveProducts = dataSource.Products.Where(p => p.UnitPrice > 2000);
+
+        }
+
+        [Category("Linq Operators")]
+        [Title("Task 9")]
+        [Description("Рассчитайте среднюю прибыльность каждого города (среднюю сумму заказа по всем клиентам из данного города) " +
+                     "и среднюю интенсивность (среднее количество заказов, приходящееся на клиента из каждого города)")]
+
+        public void Linq9()
+        {
+            var res = dataSource.Customers.GroupBy(c => c.City, (key, g1) => new
+            {
+                city = key,
+                averagePrice = g1.Average(p => p.Orders.Sum(s => s.Total)),
+                averageNumerOfOrders = g1.Average(w=> w.Orders.Count())
+            });
+
+            foreach (var r in res)
+            {
+                ObjectDumper.Write("City : " + r.city);
+                ObjectDumper.Write("Average price : " + r.averagePrice);
+                ObjectDumper.Write("Average number of orders : " + r.averageNumerOfOrders);
+            }
+        }
+
     }
 }
