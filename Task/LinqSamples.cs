@@ -65,13 +65,14 @@ namespace SampleQueries
                     (e, o) => new
                     {
                         customer = e.CompanyName,
+                        city = e.City,
                         suppliers = o
                     });
 
 
             foreach (var c in customersWithSuppliers)
             {
-                ObjectDumper.Write("Customer: " + c.customer);
+                ObjectDumper.Write("Customer: " + c.customer + "(City: " + c.city + ")");
                 foreach (var e in c.suppliers)
                 {
                     ObjectDumper.Write("Supplier: " + e.SupplierName);
@@ -106,12 +107,12 @@ namespace SampleQueries
                 Select(c => new
                 {
                     customer = c.CustomerID,
-                    startDate = c.Orders.Any() ? c.Orders.Max(o => o.OrderDate) : new DateTime()
+                    startDate = c.Orders.Any() ? c.Orders.Min(o => o.OrderDate) : new DateTime()
                 });
 
             foreach (var c in customerWithDates)
             {
-                ObjectDumper.Write("Customer: " + c.customer + " " + c.startDate);
+                ObjectDumper.Write("Customer: " + c.customer + " is a client since " + c.startDate.Month + "th month " + c.startDate.Year + " year");
             }
 
         }
@@ -127,14 +128,17 @@ namespace SampleQueries
                 Select(c => new
                 {
                     customer = c.CustomerID,
-                    startDate = c.Orders.Any() ? c.Orders.Max(o => o.OrderDate) : new DateTime()
+                    startDate = c.Orders.Any() ? c.Orders.Min(o => o.OrderDate) : new DateTime(),
+                    sumOfOrders = c.Orders.Sum(t => t.Total)
                 });
-            var orderedCustomers = customerWithDates.OrderBy(c => c.startDate.Year);
-            //orderedCustomers = customerWithDates.OrderBy(c => c.startDate.Month);
-            //orderedCustomers = customerWithDates.OrderBy(c => c.customer);
+            var orderedCustomers = customerWithDates.OrderBy(c => c.startDate.Year)
+                .ThenBy(c => c.startDate.Month)
+                .ThenByDescending(c => c.sumOfOrders)
+                .ThenBy(c => c.customer);
+
             foreach (var c in orderedCustomers)
             {
-                ObjectDumper.Write("Customer: " + c.customer + " " + c.startDate);
+                ObjectDumper.Write("Customer: " + c.customer + " " + c.startDate + " " + c.sumOfOrders);
             }
 
         }
@@ -165,26 +169,28 @@ namespace SampleQueries
 
         public void Linq7()
         {
-            var products = dataSource.Products.GroupBy(x => x.Category, (key, g1) =>
-                                g1.GroupBy(x => x.UnitsInStock, (key2, g2) =>
-                                  g2.GroupBy(x => x.UnitPrice)));
-            foreach (var category in products)
+            var products = dataSource.Products.GroupBy(x => x.Category, (key, g1) => new
             {
-                foreach (var stock in category)
-                { 
-                    foreach (var price in stock)
+                Category = key,
+                StockGroups = g1.GroupBy(x => x.UnitsInStock, (key2, g2) => new
+                {
+                    UnitsInStock = key2,
+                    Products = g2.OrderBy(z => z.UnitPrice)
+                })
+
+            });
+            foreach (var p in products)
+            {
+                ObjectDumper.Write("Category : " + p.Category);
+                foreach (var s in p.StockGroups)
+                {
+                    ObjectDumper.Write("StockGroups : " + s.UnitsInStock);
+                    foreach (var product in s.Products)
                     {
-                        foreach (var x in price)
-                        {
-                            
-                            ObjectDumper.Write("Category : " + x.Category);
-                            ObjectDumper.Write("Stock : " + x.UnitsInStock);
-                            ObjectDumper.Write("Price : " + x.UnitPrice);
-                        }
+                        ObjectDumper.Write("Product : " + product.ProductName);
                     }
                 }
             }
-
         }
 
         [Category("Linq Operators")]
@@ -193,10 +199,17 @@ namespace SampleQueries
 
         public void Linq8()
         {
-            //не понятен смысл задания
-            var chipProducts = dataSource.Products.Where(p=>p.UnitPrice<1000);
-            var middlePriceProducts = dataSource.Products.Where(p => p.UnitPrice > 1000 && p.UnitPrice < 2000);
-            var expensiveProducts = dataSource.Products.Where(p => p.UnitPrice > 2000);
+            Func<Product, string> getGroup =
+                product => product.UnitPrice < 10.0000M ? "cheap" : product.UnitPrice < 20.0000M ? "middle" : "expensive";
+            var groupedProducts = dataSource.Products.GroupBy(p => getGroup(p));
+            foreach (var group in groupedProducts)
+            {
+                ObjectDumper.Write("Group : " + group.Key);
+                foreach (var product in group)
+                {
+                    ObjectDumper.Write("Product : " + product.ProductName + " with price : " + product.UnitPrice);
+                }
+            }
 
         }
 
@@ -211,7 +224,7 @@ namespace SampleQueries
             {
                 city = key,
                 averagePrice = g1.Average(p => p.Orders.Sum(s => s.Total)),
-                averageNumerOfOrders = g1.Average(w=> w.Orders.Count())
+                averageNumerOfOrders = g1.Average(w => w.Orders.Count())
             });
 
             foreach (var r in res)
@@ -220,6 +233,87 @@ namespace SampleQueries
                 ObjectDumper.Write("Average price : " + r.averagePrice);
                 ObjectDumper.Write("Average number of orders : " + r.averageNumerOfOrders);
             }
+        }
+
+        [Category("Linq Operators")]
+        [Title("Task 10")]
+        [Description("Сделайте среднегодовую статистику активности клиентов по месяцам (без учета года), статистику по годам," +
+                     " по годам и месяцам (т.е. когда один месяц в разные годы имеет своё значение")]
+
+        public void Linq10()
+        {
+            //по месяцам (без учета года)
+            ObjectDumper.Write("по месяцам (без учета года)");
+            var monthsStatistic = dataSource.Customers
+                .SelectMany(c => c.Orders
+                .Select(o => new
+                {
+                    order = o,
+                    month = o.OrderDate.Month
+                }))
+                .GroupBy(e => e.month, (key, orders) => new
+                {
+                    month = key, ordersNumber = orders.Count()
+                });
+
+            foreach (var e in monthsStatistic)
+            {
+                ObjectDumper.Write("month : " + e.month);
+                ObjectDumper.Write("count : " + e.ordersNumber);
+            }
+            ObjectDumper.Write("******************************");
+
+            //по годам 
+            ObjectDumper.Write("по годам");
+            var yearsStatistic = dataSource.Customers
+                .SelectMany(c => c.Orders
+                .Select(o => new
+                {
+                    order = o,
+                    year = o.OrderDate.Year
+                }))
+                .GroupBy(e => e.year, (key, orders) => new
+                {
+                    year = key,
+                    ordersNumber = orders.Count()
+                });
+
+            foreach (var e in yearsStatistic)
+            {
+                ObjectDumper.Write("month : " + e.year);
+                ObjectDumper.Write("count : " + e.ordersNumber);
+            }
+
+            ObjectDumper.Write("******************************");
+
+            //по годам и месяцам (т.е.когда один месяц в разные годы имеет своё значение
+            ObjectDumper.Write("по годам и месяцам (т.е.когда один месяц в разные годы имеет своё значение)");
+            var monthsAndYearsStatistic = dataSource.Customers
+               .SelectMany(c => c.Orders
+               .Select(o => new
+               {
+                   order = o,
+                   monthAndYear = new
+                   {
+                       month = o.OrderDate.Month,
+                       year = o.OrderDate.Year
+                   }
+                   
+               }))
+               .GroupBy(e => e.monthAndYear, (key, orders) => new
+               {
+                   monthAndYear = key,
+                   ordersNumber = orders.Count()
+               });
+
+            foreach (var e in monthsAndYearsStatistic)
+            {
+                ObjectDumper.Write("month : " + e.monthAndYear.month + " year : " + e.monthAndYear.year);
+                ObjectDumper.Write("count : " + e.ordersNumber);
+            }
+            ObjectDumper.Write("******************************");
+
+
         }
 
     }
